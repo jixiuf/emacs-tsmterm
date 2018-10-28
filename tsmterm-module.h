@@ -15,6 +15,22 @@ int plugin_is_GPL_compatible;
 #endif
 
 typedef struct  {
+	struct tsm_screen *screen;
+	struct tsm_vte *vte;
+	unsigned int cell_width;
+	unsigned int cell_height;
+	unsigned int width;
+	unsigned int height;
+	unsigned int columns;
+	unsigned int rows;
+
+	unsigned int adjust_size : 1;
+	unsigned int initialized : 1;
+	unsigned int exited : 1;
+
+  char outputbuf[0x1fff];
+  size_t outputbuf_len;
+
 } Term;
 
 // Faces
