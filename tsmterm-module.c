@@ -85,6 +85,21 @@ static void log_tsm_init(){
 static void term_redraw(Term *term, emacs_env *env) {
 }
 
+static emacs_value Ftsmterm_write_input(emacs_env *env, ptrdiff_t nargs,
+                                        emacs_value args[], void *data) {
+  /* write the output of shell to terminal ,
+     so that the terminal can render and display it .
+  */
+  Term *term = env->get_user_ptr(env, args[0]);
+  ptrdiff_t len = string_bytes(env, args[1]);
+  char bytes[len];
+
+  env->copy_string_contents(env, args[1], bytes, &len);
+  tsm_vte_input(term->vte, bytes, len);
+
+  return env->make_integer(env, 0);
+}
+
 static bool is_key(unsigned char *key, size_t len, char *key_description) {
   return (len == strlen(key_description) &&
           memcmp(key, key_description, len) == 0);
@@ -266,16 +281,7 @@ static emacs_value Ftsmterm_update(emacs_env *env, ptrdiff_t nargs,
   return env->make_integer(env, 0);
 }
 
-static emacs_value Ftsmterm_write_input(emacs_env *env, ptrdiff_t nargs,
-                                      emacs_value args[], void *data) {
-  Term *term = env->get_user_ptr(env, args[0]);
-  ptrdiff_t len = string_bytes(env, args[1]);
-  char bytes[len];
 
-  env->copy_string_contents(env, args[1], bytes, &len);
-
-  return env->make_integer(env, 0);
-}
 static emacs_value Ftsmterm_set_size(emacs_env *env, ptrdiff_t nargs,
                                    emacs_value args[], void *data) {
   Term *term = env->get_user_ptr(env, args[0]);
