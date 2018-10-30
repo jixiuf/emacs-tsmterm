@@ -94,8 +94,8 @@ be send to the terminal."
   "Mayor mode for tsmterm buffer."
   (buffer-disable-undo)
   (setq tsmterm--term (tsmterm--new (window-body-height)
-                                (window-body-width)
-                                tsmterm-max-scrollback))
+                                    (window-body-width)
+                                    tsmterm-max-scrollback))
   ;; (cl-loop repeat (1- (window-body-height)) do
   ;;          (insert "\n"))
 
@@ -106,13 +106,13 @@ be send to the terminal."
   (add-hook 'window-size-change-functions #'tsmterm--window-size-change t t)
   (let ((process-environment (append '("TERM=xterm") process-environment)))
     (setq tsmterm--process (make-process
-                          :name "tsmterm"
-                          :buffer (current-buffer)
-                          :command `("/bin/sh" "-c" ,(format "stty -nl sane iutf8 rows %d columns %d >/dev/null && exec %s" (window-body-height) (window-body-width) tsmterm-shell))
-                          :coding 'no-conversion
-                          :connection-type 'pty
-                          :filter #'tsmterm--filter
-                          :sentinel #'ignore))
+                            :name "tsmterm"
+                            :buffer (current-buffer)
+                            :command `("/bin/sh" "-c" ,(format "stty -nl sane iutf8 rows %d columns %d >/dev/null && exec %s" (window-body-height) (window-body-width) tsmterm-shell))
+                            :coding 'no-conversion
+                            :connection-type 'pty
+                            :filter #'tsmterm--filter
+                            :sentinel #'ignore))
     ;; (setq tsmterm--timer (run-with-timer 0 tsmterm--timer-interval #'tsmterm--run-timer buffer))
     (add-hook 'kill-buffer-hook #'tsmterm--kill-buffer-hook t t)))
 

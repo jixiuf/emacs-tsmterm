@@ -79,7 +79,43 @@ static void log_tsm_init(){
 
 }
 
+static emacs_value render_text(emacs_env *env, char *buffer, int len,
+                               const struct tsm_screen_attr *attr) {
+  emacs_value text;
+  if (len == 0) {
+    text = env->make_string(env, "", 0);
+    return text;
+  } else {
+    text = env->make_string(env, buffer, len);
+  }
 
+  info("color r%d g%d b%d",attr->fr,attr->fg,attr->fb);
+  emacs_value foreground = color_to_rgb_string(env, attr->fr,attr->fg,attr->fb);
+  emacs_value background = color_to_rgb_string(env, attr->br,attr->bg,attr->bb);
+  emacs_value bold = attr->bold ? Qbold : Qnormal;
+  emacs_value underline = attr->underline ? Qt : Qnil;
+  /* emacs_value italic = attr->italic ? Qitalic : Qnormal; */
+  emacs_value reverse = attr->inverse ? Qt : Qnil;
+  /* emacs_value strike = attr->strike ? Qt : Qnil; */
+  emacs_value blink = attr->blink? Qt : Qnil;
+
+  // TODO: Blink, font, dwl, dhl is missing
+  emacs_value properties =
+    list(env,
+         (emacs_value[]){Qforeground, foreground,
+                         Qbackground, background,
+                         Qweight, bold,
+                         Qunderline, underline,
+                         /* Qslant, italic, */
+                         Qreverse, reverse
+                         /* Qstrike, strike */
+         },
+         10);
+
+  put_text_property(env, text, Qface, properties);
+
+  return text;
+}
 
 static int term_draw_cell(struct tsm_screen *screen, uint32_t id,
                           const uint32_t *ch, size_t len,
@@ -103,45 +139,32 @@ static int term_draw_cell(struct tsm_screen *screen, uint32_t id,
     strncpy(ptr," ",1);
     term->outputbuf_len+=1;
     ptr+=1;
+    /* emacs_value text=env->make_string(env, " ", 1); */
+    emacs_value text=render_text(env," ",1,attr);
+    insert(env,text);
   }else{
     for (i = 0; i < len; i++){
       int size =tsm_ucs4_to_utf8(ch[i],buffer);
       if(size){
         strncpy(ptr,buffer,size);
         term->outputbuf_len+=size;
+        /* emacs_value text=env->make_string(env, ptr, size); */
+        emacs_value text=render_text(env,ptr,size,attr);
+        insert(env,text);
         ptr+=size;
       }
     }
   }
-  /* if(posx==term->width-1){ */
-  /*   strncpy(ptr,"\n",1); */
-  /*   term->outputbuf_len+=1; */
-  /* } */
+  if(posx==term->width-1&&posy!=term->height-1){
+    strncpy(ptr,"\n",1);
+    term->outputbuf_len+=1;
+        emacs_value text=env->make_string(env, "\n", 1);
+        insert(env,text);
+  }
   term->outputbuf[term->outputbuf_len]='\0';
 
   /* info("drawcell len=%d,x=%d,y=%d,width=%d height=%d |%s| %d", */
        /* len,posx,posy,term->width,term->height,ptr2,term->outputbuf_len); */
-
-  x = posx * term->cell_width;
-  y = posy * term->cell_height;
-
-  /* invert colors if requested */
-  if (attr->inverse) {
-    fr = attr->br;
-    fg = attr->bg;
-    fb = attr->bb;
-    br = attr->fr;
-    bg = attr->fg;
-    bb = attr->fb;
-  } else {
-    fr = attr->fr;
-    fg = attr->fg;
-    fb = attr->fb;
-    br = attr->br;
-    bg = attr->bg;
-    bb = attr->bb;
-  }
-
   return 0;
 }
 static void term_redraw(Term *term, emacs_env *env) {
@@ -162,7 +185,7 @@ static void term_redraw(Term *term, emacs_env *env) {
   /* tsm_vte_get_def_attr(term->vte, &attr); */
   /* info("term_redraw age=%d",age); */
 
-  insert(env,env->make_string(env, term->outputbuf, term->outputbuf_len));
+  /* insert(env,env->make_string(env, term->outputbuf, term->outputbuf_len)); */
   term->outputbuf_len=0;
   /* goto_line(env,1); */
 }
@@ -298,6 +321,79 @@ static void term_write_cb(struct tsm_vte *vte, const char *u8, size_t len,
   /* todo:make sure  term->outputbuf is big enough*/
 
 }
+ static uint8_t color_palette[COLOR_NUM][3] = {
+ 	[COLOR_BLACK]         = { 0x00, 0x00, 0x00 },
+ 	[COLOR_RED]           = { 0xab, 0x46, 0x42 },
+ 	[COLOR_GREEN]         = { 0xa1, 0xb5, 0x6c },
+ 	[COLOR_YELLOW]        = { 0xf7, 0xca, 0x88 },
+ 	[COLOR_BLUE]          = { 0x7c, 0xaf, 0xc2 },
+ 	[COLOR_MAGENTA]       = { 0xba, 0x8b, 0xaf },
+ 	[COLOR_CYAN]          = { 0x86, 0xc1, 0xb9 },
+ 	[COLOR_LIGHT_GREY]    = { 0xaa, 0xaa, 0xaa },
+ 	[COLOR_DARK_GREY]     = { 0x55, 0x55, 0x55 },
+ 	[COLOR_LIGHT_RED]     = { 0xab, 0x46, 0x42 },
+ 	[COLOR_LIGHT_GREEN]   = { 0xa1, 0xb5, 0x6c },
+	[COLOR_LIGHT_YELLOW]  = { 0xf7, 0xca, 0x88 },
+ 	[COLOR_LIGHT_BLUE]    = { 0x7c, 0xaf, 0xc2 },
+ 	[COLOR_LIGHT_MAGENTA] = { 0xba, 0x8b, 0xaf },
+ 	[COLOR_LIGHT_CYAN]    = { 0x86, 0xc1, 0xb9 },
+ 	[COLOR_WHITE]         = { 0xff, 0xff, 0xff },
+
+ 	[COLOR_FOREGROUND]    = { 0x18, 0x18, 0x18 },
+ 	[COLOR_BACKGROUND]    = { 0xd8, 0xd8, 0xd8 },
+ };
+
+static void term_set_palette_colors(Term *term, int colorId, uint8_t r,uint8_t g ,uint8_t b) {
+  color_palette[colorId][0]=r;
+  color_palette[colorId][1]=g;
+  color_palette[colorId][2]=b;
+  /* libtsm doesnot support now */
+}
+static void term_setup_colors(Term *term, emacs_env *env) {
+  struct tsm_screen_attr attr;
+
+  rgb_string_to_color(env, get_hex_color_fg(env, Qterm),&attr.fr,&attr.fg,&attr.fb);
+  rgb_string_to_color(env, get_hex_color_bg(env, Qterm),&attr.br,&attr.bg,&attr.bb);
+  tsm_screen_set_def_attr(term->screen, &attr);
+  term_set_palette_colors(term, COLOR_FOREGROUND, attr.fr,attr.fg,attr.fb);
+  term_set_palette_colors(term, COLOR_BACKGROUND, attr.br,attr.bg,attr.bb);
+
+  rgb_string_to_color(env, get_hex_color_fg(env, Qterm_color_black),&attr.fr,&attr.fg,&attr.fb);
+  term_set_palette_colors(term, COLOR_BLACK, attr.fr,attr.fg,attr.fb);
+  term_set_palette_colors(term, COLOR_LIGHT_GREY, attr.fr,attr.fg,attr.fb);
+  term_set_palette_colors(term, COLOR_DARK_GREY, attr.fr,attr.fg,attr.fb);
+
+
+  rgb_string_to_color(env, get_hex_color_fg(env, Qterm_color_red),&attr.fr,&attr.fg,&attr.fb);
+  term_set_palette_colors(term, COLOR_RED,attr.fr,attr.fg,attr.fb);
+  term_set_palette_colors(term, COLOR_LIGHT_RED,attr.fr,attr.fg,attr.fb);
+
+
+  rgb_string_to_color(env, get_hex_color_fg(env, Qterm_color_green),&attr.fr,&attr.fg,&attr.fb);
+  term_set_palette_colors(term, COLOR_GREEN,attr.fr,attr.fg,attr.fb);
+  term_set_palette_colors(term, COLOR_LIGHT_GREEN,attr.fr,attr.fg,attr.fb);
+
+  rgb_string_to_color(env, get_hex_color_fg(env, Qterm_color_yellow),&attr.fr,&attr.fg,&attr.fb);
+  term_set_palette_colors(term, COLOR_YELLOW,attr.fr,attr.fg,attr.fb);
+  term_set_palette_colors(term, COLOR_LIGHT_YELLOW,attr.fr,attr.fg,attr.fb);
+
+  rgb_string_to_color(env, get_hex_color_fg(env, Qterm_color_blue),&attr.fr,&attr.fg,&attr.fb);
+  term_set_palette_colors(term, COLOR_BLUE,attr.fr,attr.fg,attr.fb);
+  term_set_palette_colors(term, COLOR_LIGHT_BLUE,attr.fr,attr.fg,attr.fb);
+
+  rgb_string_to_color(env, get_hex_color_fg(env, Qterm_color_magenta),&attr.fr,&attr.fg,&attr.fb);
+  term_set_palette_colors(term, COLOR_MAGENTA,attr.fr,attr.fg,attr.fb);
+  term_set_palette_colors(term, COLOR_LIGHT_MAGENTA,attr.fr,attr.fg,attr.fb);
+
+  rgb_string_to_color(env, get_hex_color_fg(env, Qterm_color_cyan),&attr.fr,&attr.fg,&attr.fb);
+  term_set_palette_colors(term, COLOR_CYAN,attr.fr,attr.fg,attr.fb);
+  term_set_palette_colors(term, COLOR_LIGHT_CYAN,attr.fr,attr.fg,attr.fb);
+
+  rgb_string_to_color(env, get_hex_color_fg(env, Qterm_color_white),&attr.fr,&attr.fg,&attr.fb);
+  term_set_palette_colors(term, COLOR_WHITE,attr.fr,attr.fg,attr.fb);
+  tsm_vte_set_custom_palette(term->vte,color_palette);
+  tsm_vte_set_palette(term->vte,"custom");
+}
 
 static emacs_value Ftsmterm_new(emacs_env *env, ptrdiff_t nargs,
                                 emacs_value args[], void *data) {
@@ -305,6 +401,7 @@ static emacs_value Ftsmterm_new(emacs_env *env, ptrdiff_t nargs,
   int rows = env->extract_integer(env, args[0]);
   int cols = env->extract_integer(env, args[1]);
   int sb_size = env->extract_integer(env, args[2]);
+
   int r;
   r = tsm_screen_new(&term->screen, log_tsm, term);
   if (r < 0)
@@ -324,6 +421,7 @@ static emacs_value Ftsmterm_new(emacs_env *env, ptrdiff_t nargs,
   term->outputbuf_len=0;
   term->width=cols;
   term->height=rows;
+  term_setup_colors(term,env);
   return env->make_user_ptr(env, term_finalize, term);
 
  err_vte:

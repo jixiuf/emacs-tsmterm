@@ -92,46 +92,44 @@ emacs_value Qblinking = blinking ? Qt : Qfalse;
 env->funcall(env, Fblink_cursor_mode, 1, (emacs_value[]){Qblinking});
 }
 
-/* emacs_value get_hex_color_fg(emacs_env *env, emacs_value face) { */
-/*   return env->funcall(env, Ftsmterm_face_color_hex, 2, */
-/*                       (emacs_value[]){face, Qforeground}); */
-/* } */
+emacs_value get_hex_color_fg(emacs_env *env, emacs_value face) {
+  return env->funcall(env, Ftsmterm_face_color_hex, 2,
+                      (emacs_value[]){face, Qforeground});
+}
 
-/* emacs_value get_hex_color_bg(emacs_env *env, emacs_value face) { */
-/*   return env->funcall(env, Ftsmterm_face_color_hex, 2, */
-/*                       (emacs_value[]){face, Qbackground}); */
-/* } */
+emacs_value get_hex_color_bg(emacs_env *env, emacs_value face) {
+  return env->funcall(env, Ftsmterm_face_color_hex, 2,
+                      (emacs_value[]){face, Qbackground});
+}
 void byte_to_hex(uint8_t byte, char *hex) { snprintf(hex, 3, "%.2X", byte); }
 
-/* emacs_value color_to_rgb_string(emacs_env *env, VTermColor color) { */
-/* char buffer[8]; */
-/* buffer[0] = '#'; */
-/* buffer[7] = '\0'; */
-/* byte_to_hex(color.red, buffer + 1); */
-/* byte_to_hex(color.green, buffer + 3); */
-/* byte_to_hex(color.blue, buffer + 5); */
+emacs_value color_to_rgb_string(emacs_env *env, uint8_t r ,uint8_t g ,uint8_t b) {
+  char buffer[8];
+  buffer[0] = '#';
+  buffer[7] = '\0';
+  byte_to_hex(r, buffer + 1);
+  byte_to_hex(g, buffer + 3);
+  byte_to_hex(b, buffer + 5);
 
-/* return env->make_string(env, buffer, 7); */
-/* }; */
+  return env->make_string(env, buffer, 7);
+}
 
 uint8_t hex_to_byte(char *hex) { return strtoul(hex, NULL, 16); }
 
-/* VTermColor rgb_string_to_color(emacs_env *env, emacs_value string) { */
-/* VTermColor color; */
-/* ptrdiff_t len = 8; */
-/* char buffer[len]; */
-/* char hex[3]; */
-/* env->copy_string_contents(env, string, buffer, &len); */
-/* hex[0] = buffer[1]; */
-/* hex[1] = buffer[2]; */
-/* color.red = hex_to_byte(hex); */
-/* hex[0] = buffer[3]; */
-/* hex[1] = buffer[4]; */
-/* color.green = hex_to_byte(hex); */
-/* hex[0] = buffer[5]; */
-/* hex[1] = buffer[6]; */
-/* color.blue = hex_to_byte(hex); */
+void rgb_string_to_color(emacs_env *env, emacs_value string,uint8_t *r ,uint8_t *g ,uint8_t *b) {
+  ptrdiff_t len = 8;
+  char buffer[len];
+  char hex[3];
+  env->copy_string_contents(env, string, buffer, &len);
+  hex[0] = buffer[1];
+  hex[1] = buffer[2];
+  *r = hex_to_byte(hex);
+  hex[0] = buffer[3];
+  hex[1] = buffer[4];
+  *g= hex_to_byte(hex);
+  hex[0] = buffer[5];
+  hex[1] = buffer[6];
+  *b= hex_to_byte(hex);
 
-/* return color; */
-/* }; */
+};
 

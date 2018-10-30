@@ -7,7 +7,8 @@ emacs buffer.
 
 This is not finished, so it will crash your emacs. If it does, please
 report a bug!
-
+# Installation forked version libtsm
+ https://github.com/jixiuf/libtsm
 # Installation
 
 ```

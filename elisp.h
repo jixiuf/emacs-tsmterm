@@ -46,10 +46,6 @@ emacs_value string_length(emacs_env *env, emacs_value string);
 emacs_value list(emacs_env *env, emacs_value *elements, ptrdiff_t len);
 void put_text_property(emacs_env *env, emacs_value string, emacs_value property,
                        emacs_value value);
-void byte_to_hex(uint8_t byte, char *hex);
-/* emacs_value color_to_rgb_string(emacs_env *env, VTermColor color); */
-uint8_t hex_to_byte(char *hex);
-/* VTermColor rgb_string_to_color(emacs_env *env, emacs_value string); */
 void erase_buffer(emacs_env *env);
 void insert(emacs_env *env, emacs_value string);
 void goto_char(emacs_env *env, int pos);
@@ -58,9 +54,14 @@ void goto_line(emacs_env *env, int n);
 void toggle_cursor(emacs_env *env, bool visible);
 void toggle_cursor_blinking(emacs_env *env, bool visible);
 void delete_lines(emacs_env *env, int linenum, int count, bool del_whole_line);
-emacs_value get_hex_color_fg(emacs_env *env, emacs_value face);
-emacs_value get_hex_color_bg(emacs_env *env, emacs_value face);
 emacs_value buffer_line_number(emacs_env *env);
 void recenter(emacs_env *env, emacs_value pos);
 void forward_char(emacs_env *env, emacs_value n);
+
+void byte_to_hex(uint8_t byte, char *hex);
+uint8_t hex_to_byte(char *hex);
+emacs_value get_hex_color_fg(emacs_env *env, emacs_value face);
+emacs_value get_hex_color_bg(emacs_env *env, emacs_value face);
+emacs_value color_to_rgb_string(emacs_env *env, uint8_t r ,uint8_t g ,uint8_t b) ;
+void rgb_string_to_color(emacs_env *env, emacs_value string,uint8_t *r ,uint8_t *g ,uint8_t *b) ;
 #endif /* ELISP_H */
