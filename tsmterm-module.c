@@ -81,8 +81,90 @@ static void log_tsm_init(){
 
 
 
+static int term_draw_cell(struct tsm_screen *screen, uint32_t id,
+                          const uint32_t *ch, size_t len,
+                          unsigned int cwidth, unsigned int posx,
+                          unsigned int posy,
+                          const struct tsm_screen_attr *attr,
+                          tsm_age_t age, void *data)
+{
+  Term *term = data;
+  uint8_t fr, fg, fb, br, bg, bb;
+  unsigned int x, y;
+  int r;
+  emacs_env *env=term->env;
+  char *ptr=term->outputbuf;
+  char *ptr2;
+  ptr+=term->outputbuf_len;
+  ptr2=ptr;
+  int i;
+  char buffer[4];
+  if(len==0){
+    strncpy(ptr," ",1);
+    term->outputbuf_len+=1;
+    ptr+=1;
+  }else{
+    for (i = 0; i < len; i++){
+      int size =tsm_ucs4_to_utf8(ch[i],buffer);
+      if(size){
+        strncpy(ptr,buffer,size);
+        term->outputbuf_len+=size;
+        ptr+=size;
+      }
+    }
+  }
+  /* if(posx==term->width-1){ */
+  /*   strncpy(ptr,"\n",1); */
+  /*   term->outputbuf_len+=1; */
+  /* } */
+  term->outputbuf[term->outputbuf_len]='\0';
 
+  /* info("drawcell len=%d,x=%d,y=%d,width=%d height=%d |%s| %d", */
+       /* len,posx,posy,term->width,term->height,ptr2,term->outputbuf_len); */
+
+  x = posx * term->cell_width;
+  y = posy * term->cell_height;
+
+  /* invert colors if requested */
+  if (attr->inverse) {
+    fr = attr->br;
+    fg = attr->bg;
+    fb = attr->bb;
+    br = attr->fr;
+    bg = attr->fg;
+    bb = attr->fb;
+  } else {
+    fr = attr->fr;
+    fg = attr->fg;
+    fb = attr->fb;
+    br = attr->br;
+    bg = attr->bg;
+    bb = attr->bb;
+  }
+
+  return 0;
+}
 static void term_redraw(Term *term, emacs_env *env) {
+  struct tsm_screen_attr attr;
+  unsigned int w, h;
+
+  term->env=env;
+  erase_buffer(env);
+  term->outputbuf_len=0;
+  info("redraw init term->outputbuf_len=0");
+  /* insert(env,env->make_string(env, "hello", 5)); */
+  int age = tsm_screen_draw(term->screen, term_draw_cell,
+                            (void*)term);
+  term->outputbuf[term->outputbuf_len]='\0';
+  info("draw  %s %d",term->outputbuf,term->outputbuf_len);
+  /* w = tsm_screen_get_width(term->screen); */
+  /* h = tsm_screen_get_height(term->screen); */
+  /* tsm_vte_get_def_attr(term->vte, &attr); */
+  /* info("term_redraw age=%d",age); */
+
+  insert(env,env->make_string(env, term->outputbuf, term->outputbuf_len));
+  term->outputbuf_len=0;
+  /* goto_line(env,1); */
 }
 
 static emacs_value Ftsmterm_write_input(emacs_env *env, ptrdiff_t nargs,
@@ -162,7 +244,7 @@ static void term_process_key(Term *term, unsigned char *key, size_t len,
   } else if (is_key(key, len, "<f12>")) {
     keysym= XKB_KEY_F12;
   } else if (is_key(key, len, "SPC")) {
-    keysym= XKB_KEY_space;
+    keysym= XKB_KEY_KP_Space;
   }
   uint32_t codepoint=0;
   if (len <= 4) {
@@ -228,6 +310,7 @@ static emacs_value Ftsmterm_new(emacs_env *env, ptrdiff_t nargs,
   if (r < 0)
     goto err_free;
 
+  tsm_screen_resize(term->screen,cols,rows);
   tsm_screen_set_max_sb(term->screen, sb_size > 0 ? sb_size : 0);
 
   r = tsm_vte_new(&term->vte, term->screen, term_write_cb, term,
@@ -239,6 +322,8 @@ static emacs_value Ftsmterm_new(emacs_env *env, ptrdiff_t nargs,
   term->adjust_size = 1;
   term->initialized=1;
   term->outputbuf_len=0;
+  term->width=cols;
+  term->height=rows;
   return env->make_user_ptr(env, term_finalize, term);
 
  err_vte:
@@ -287,6 +372,9 @@ static emacs_value Ftsmterm_set_size(emacs_env *env, ptrdiff_t nargs,
   Term *term = env->get_user_ptr(env, args[0]);
   int rows = env->extract_integer(env, args[1]);
   int cols = env->extract_integer(env, args[2]);
+  term->width=cols;
+  term->height=rows;
+  tsm_screen_resize(term->screen,cols,rows);
 
 
   return Qnil;

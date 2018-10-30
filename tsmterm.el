@@ -96,8 +96,8 @@ be send to the terminal."
   (setq tsmterm--term (tsmterm--new (window-body-height)
                                 (window-body-width)
                                 tsmterm-max-scrollback))
-  (cl-loop repeat (1- (window-body-height)) do
-           (insert "\n"))
+  ;; (cl-loop repeat (1- (window-body-height)) do
+  ;;          (insert "\n"))
 
   (setq buffer-read-only t)
   (setq-local scroll-conservatively 101)
@@ -113,7 +113,7 @@ be send to the terminal."
                           :connection-type 'pty
                           :filter #'tsmterm--filter
                           :sentinel #'ignore))
-    (setq tsmterm--timer (run-with-timer 0 tsmterm--timer-interval #'tsmterm--run-timer buffer))
+    ;; (setq tsmterm--timer (run-with-timer 0 tsmterm--timer-interval #'tsmterm--run-timer buffer))
     (add-hook 'kill-buffer-hook #'tsmterm--kill-buffer-hook t t)))
 
 
@@ -174,7 +174,10 @@ be send to the terminal."
 
 Then triggers a redraw from the module."
   (with-current-buffer (process-buffer process)
-    (tsmterm--write-input tsmterm--term input)))
+    (let ((inhibit-redisplay t)
+          (inhibit-read-only t))
+      (tsmterm--write-input tsmterm--term input)
+      (tsmterm--update tsmterm--term))))
 
 
 (defun tsmterm--run-timer (buffer)
