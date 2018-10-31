@@ -1,6 +1,7 @@
 #ifndef TSMTERM_MODULE_H
 #define TSMTERM_MODULE_H
 
+#include <libtsm.h>
 #include "emacs-module.h"
 #include <inttypes.h>
 #include <stdbool.h>
@@ -31,6 +32,7 @@ typedef struct  {
 
   char outputbuf[0x1fff];
   size_t outputbuf_len;
+  tsm_age_t age;
 
 } Term;
 

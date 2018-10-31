@@ -6,7 +6,6 @@
 #include <limits.h>
 #include <string.h>
 #include <unistd.h>
-#include <libtsm.h>
 #ifdef BUILD_HAVE_XKBCOMMON
 #  include <xkbcommon/xkbcommon-keysyms.h>
 #else
@@ -89,7 +88,6 @@ static emacs_value render_text(emacs_env *env, char *buffer, int len,
     text = env->make_string(env, buffer, len);
   }
 
-  info("color r%d g%d b%d",attr->fr,attr->fg,attr->fb);
   emacs_value foreground = color_to_rgb_string(env, attr->fr,attr->fg,attr->fb);
   emacs_value background = color_to_rgb_string(env, attr->br,attr->bg,attr->bb);
   emacs_value bold = attr->bold ? Qbold : Qnormal;
@@ -125,6 +123,7 @@ static int term_draw_cell(struct tsm_screen *screen, uint32_t id,
                           tsm_age_t age, void *data)
 {
   Term *term = data;
+  info("ce..age=%d,lastage=%d",age,term->age);
   uint8_t fr, fg, fb, br, bg, bb;
   unsigned int x, y;
   int r;
@@ -139,8 +138,8 @@ static int term_draw_cell(struct tsm_screen *screen, uint32_t id,
     strncpy(ptr," ",1);
     term->outputbuf_len+=1;
     ptr+=1;
-    /* emacs_value text=env->make_string(env, " ", 1); */
-    emacs_value text=render_text(env," ",1,attr);
+    emacs_value text=env->make_string(env, " ", 1);
+    /* emacs_value text=render_text(env," ",1,attr); */
     insert(env,text);
   }else{
     for (i = 0; i < len; i++){
@@ -176,10 +175,10 @@ static void term_redraw(Term *term, emacs_env *env) {
   term->outputbuf_len=0;
   info("redraw init term->outputbuf_len=0");
   /* insert(env,env->make_string(env, "hello", 5)); */
-  int age = tsm_screen_draw(term->screen, term_draw_cell,
+  term->age = tsm_screen_draw(term->screen, term_draw_cell,
                             (void*)term);
   term->outputbuf[term->outputbuf_len]='\0';
-  info("draw  %s %d",term->outputbuf,term->outputbuf_len);
+  info("draw  %s %d age=%d",term->outputbuf,term->outputbuf_len,term->age);
   /* w = tsm_screen_get_width(term->screen); */
   /* h = tsm_screen_get_height(term->screen); */
   /* tsm_vte_get_def_attr(term->vte, &attr); */
